@@ -1,0 +1,82 @@
+Discussion Notes for 4.21
+Our parent is ./pipe
+
+Do not redirect stdin of your first new process argv[1]
+
+Do not redirect stdout of your last process argv[argc-1]
+
+We can loop over all 8 commands. Do pipe, fork, may want to store their return value. Then set up reading and writing end to proper places. If fork() returns 0, write the child code, if its > 0 we are parent, if its < 0 we have error.
+
+In the for loop, we shouldn’t include first and last args. We need to handle those separately.
+
+For first and last, we don’t create a pipe, but for the intermediate args, we want to create a pipe. After we create a pipe, we want to create the child with fork. Once the fork is done, we set up the ends of the pipe correctly, and then make sure to close the ends that aren’t needed. After this, call exec to replace the child code’s with the code we want to execute, then we must clean up.
+
+So after we fork, we want to replace the child process with the actual command we want to run, for example ‘ls’ if we do ./pipe ls. we want to set up pipe, fork, then call exec finally to actualy run ls.
+
+Regarding clean up, we want to use waitpid() during the parent process, ie when ret > 0.
+
+For each command you execute, first you may want to create a pipe for this and the command after this to communicate w each other.
+
+ie. ./pipe ls cat
+
+we want to create a pipe for ls and cat to communicate 
+
+if we just have ./pipe ls, we don’t need to create a pipe.
+
+Once we have created the pipe, we should start forking our process.
+
+Once forking is done, set up the two ends up the pipe correctly. Here we may want to use a variable, which could be outside of our for-loop, to keep track of some pipe file description information between processes.
+
+While setting up the pipes, make sure to close the file descriptors which are no longer needed.
+
+After the pipes are set up correctly, now you can run execve/execlp to replace the child’s code with the corresponding command you want to execute (remember how to know if you’re at the child process or parent process?)
+
+Make sure you do your cleanup work correctly (this is why you need to keep track of the processes you spawned)
+
+- You might need some data structures to keep track of your child processes
+- You might need to keep track of your read end (to use between processes)
+- Make sure you free up the file descriptors, once you are done with them
+- Make sure you wait for your child processes before returning
+
+int pipe(int fds[2]));
+
+- fds[2] is the space that you declare for the pipe
+- pipe() system call will set the two values ( read and write ) accordingly
+
+We want to create a pipe per communication between two processes.
+
+Ie. ./pipe ls cat cat 
+
+pipe1 communicates between ls and cat, pipe2 communicates between cat and cat
+
+//
+
+**Lab 2 Background:**
+
+Can use a doubly linked list to keep track of the workload. Everytime you execute a process, you put it at the back of the linked list.
+
+**Tailq API:**
+
+- (tail queue) defined in <sys/queue.h>
+- It is a doubly linked list + a pointer to the tail (and head) of the list
+
+Supports following functionality:
+
+- O(1) insertion of a new entry at the head, tail, and anywhere
+
+TAILQ_ENTRY(my_node) links;
+
+- creates next and previous pointer to elements
+- in example: nodes are of type my_node
+
+TAIL_HEAD macro:
+
+- the head of the linked list that has pointers to first and last element
+- defines the struct that is the linked list
+- in example: HEAD is of type my_linked_list
+
+TAILQ_INIT(head)
+
+- Pass in the head you just defined, LL
+
+TAILQ_INSERT_* API:
